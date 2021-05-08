@@ -4,19 +4,29 @@ from django.contrib.auth.models import User
 
 class RegistrationSerializer(serializers.ModelSerializer):
 
-    _password = serializers.CharField(style={"input_type": "password"}, write_only=True)
+    _password = serializers.CharField(
+        style={"input_type": "password"},
+        write_only=True,
+    )
 
     class Meta:
         model = User
-        fields = ["username", "email", "password", "_password"]
-        extra_kwargs = {"password": {"write_only": True}}
+        fields = [
+            "username",
+            "email",
+            "password",
+            "_password",
+        ]
+        extra_kwargs = {
+            "password": {"write_only": True},
+        }
 
     # This is called when the serializer its invoked by POST Method
     def save(self):
 
         user = User(
             email=self.validated_data["email"],
-            username=self.validated_data["username"]
+            username=self.validated_data["username"],
         )
 
         password = self.validated_data["password"]
