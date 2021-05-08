@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'api',
+    'users',
     'website',
     'rest_framework',
 ]
@@ -108,6 +109,9 @@ REST_FRAMEWORK = {
     ]
 }
 
+# JWT CONFIG
+ACCESS_TOKEN_LIFETIME = 60000
+REFRESH_TOKEN_LIFETIME = 160000
 
 # Internationalization
 # https://docs.djangoproject.com/en/3.2/topics/i18n/
