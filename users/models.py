@@ -103,12 +103,17 @@ class Plan(models.Model):
 
     MALE_CONST = 5
     FEMALE_CONST = -161
+    CONST_MACRO = 4
+    RECOMENDED_LIPIDS_PERCENTAGE = 0.3
+    CONST_LIPIDS = 9
 
     def get_rest_bmr(self):
         """
         This method its based in the [Harris-Benedict BMR ecuation(1990)](https://en.wikipedia.org/wiki/Harris%E2%80%93Benedict_equation)
-        this formula stimates the daily caloric consumption at rest in function of individual's weight, height and age.
-        """
+        this formula stimates the daily caloric consumption at rest(assuming that a human just exist) in function
+        of individual's weight, height and age.
+        """  # noqa: E501
+
         formula = (
             10 * self.profile.weight
             + 6.25 * self.profile.height
@@ -121,6 +126,10 @@ class Plan(models.Model):
         )
 
     def get_maintain_bmr(self):
+        """
+        This return the recomended calories that a human needs to consume daily according to their activity level
+        to mantain the same weight
+        """
         return self.get_rest_bmr() * self.activity_level
 
     def get_gap_bmr(self):
@@ -136,13 +145,14 @@ class Plan(models.Model):
     def get_proteins(self):
         ACTIVITY_LEVEL = self.get_activity_level_display().upper()
         PROTEIN_CONST = getattr(Plan.ProteinFactor, ACTIVITY_LEVEL).value
-        return self.get_diet_bmr() * PROTEIN_CONST
+        return self.get_diet_bmr() * PROTEIN_CONST / self.CONST_MACRO
 
     def get_carbohydrates(self):
         pass
 
     def get_lipids(self):
-        pass
+        lipids_colories = self.get_diet_bmr() * self.RECOMENDED_LIPIDS_PERCENTAGE
+        return lipids_colories / self.CONST_LIPIDS
 
     def get_stimated_weight_progress(self):
         pass
