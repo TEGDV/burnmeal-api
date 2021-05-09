@@ -9,7 +9,7 @@ TEST_USER = {
 }
 
 TEST_PROFILE = {
-    "weight": 98,
+    "weight": 98.0,
     "height": 178,
     "birthday": "1974-04-11",
     "gender": "M",
@@ -17,9 +17,14 @@ TEST_PROFILE = {
 
 TEST_USER_PLAN = {
     "activity_level": "SEDENTARY",
-    "objetive": "FL",
+    "objective": "FAT_LOSS",
     "intensity": "LOW",
 }
+
+# The important thing of testing its, if its necesary repeat the code the times
+# that be necesary because the any test shall to depends on other test pass
+# Thas why its necesary to define all the formulas as setup if its necesary to
+# get the expected result even if in the main function be processed in other way
 
 
 class TestProfileModel(TestCase):
@@ -55,49 +60,58 @@ class TestProfileModel(TestCase):
 class TestPlanModel(TestCase):
     @classmethod
     def setUpTestData(cls):
+        # Objects
+        # Its necesary to create 2 objects of every class because we need probe Male users
+        # and Female users to probe the code efectivity, and check whats fixtures do
         cls.user = User.objects.create(**TEST_USER)
         cls.profile = Profile.objects.create(user=cls.user, **TEST_PROFILE)
-        cls.plan = Plan.objects.create(profile=cls.profile, **TEST_USER_PLAN)
+
+        # This var its temporal since I code the PlanSerilializer that format the request from
+        # the front end because this var is stored as float type, but for human legibility
+        # in the json request comes as String like LOW, MODERATE, etc.
+        _activity_level = getattr(Plan.ActivityLevel, TEST_USER_PLAN["activity_level"])
+        _intensity = getattr(Plan.Intensity, TEST_USER_PLAN["intensity"])
+        _objective = getattr(Plan.Objective, TEST_USER_PLAN["objective"])
+        cls.plan = Plan.objects.create(
+            profile=cls.profile,
+            activity_level=_activity_level,
+            objective=_objective,
+            intensity=_intensity,
+        )
+
+        # Const
+        cls.AGE = date.today().year - int(cls.profile.birthday.split("-")[0])
+        cls.GENDER_CONST = (
+            cls.plan.MALE_CONST if cls.profile.gender == "M" else cls.plan.FEMALE_CONST
+        )
+        cls.REST_BMR = 10 * cls.profile.weight + 6.25 * cls.profile.height - 5 * cls.AGE + cls.GENDER_CONST
+        cls.MAINTENANCE_BMR = cls.REST_BMR * cls.plan.activity_level
+        cls.GAP_BMR = cls.MAINTENANCE_BMR * cls.plan.intensity
+        cls.DIET_BMR = cls.MAINTENANCE_BMR + (
+            cls.GAP_BMR if cls.plan.objective == "MG" else -cls.GAP_BMR
+        )
+        cls.PROTEIN_CONST = getattr(
+            Plan.ProteinFactor, TEST_USER_PLAN["activity_level"]
+        ).value
 
     def test_get_rest_bmr(self):
-        formula = (
-            10 * self.profile.weight
-            + 6.25 * self.profile.height
-            - 5 * self.profile.get_age()
+        self.assertEqual(
+            self.plan.get_rest_bmr(),
+            self.REST_BMR,
         )
-        if self.profile.gender == "M":
-            self.assertEqual(
-                self.plan.get_rest_bmr(),
-                formula + self.plan.MALE_CONST,
-            )
-        else:
-            self.assertEqual(
-                self.plan.get_rest_bmr(),
-                formula + self.plan.FEMALE_CONST,
-            )
 
     def test_get_maintain_bmr(self):
         self.assertEqual(
             self.plan.get_maintain_bmr(),
-            self.plan.get_rest_bmr()
-            * self.plan.activity_level,
+            self.MAINTENANCE_BMR,
         )
 
-    def test_get_gain_bmr(self):
-        maintain_bmr = self.plan.get_maintain_bmr()
-        modified_bmr = (
-            maintain_bmr * self.plan.INTENSITY_LEVEL_FACTOR[self.plan.intensity]
-        )
-        result = maintain_bmr + modified_bmr
-        self.assertEqual(self.plan.get_gain_bmr(), result)
+    def test_get_gap_bmr(self):
+        self.assertEqual(self.plan.get_gap_bmr(), self.GAP_BMR)
 
-    def test_get_loss_bmr(self):
-        maintain_bmr = self.plan.get_maintain_bmr()
-        modified_bmr = (
-            maintain_bmr * self.plan.intensity
-        )
-        result = maintain_bmr - modified_bmr
-        self.assertEqual(self.plan.get_loss_bmr(), result)
+    def test_get_diet_bmr(self):
+        self.assertEqual(self.plan.get_diet_bmr(), self.DIET_BMR)
 
     def test_get_proteins(self):
-        
+        proteins = self.DIET_BMR * self.PROTEIN_CONST
+        self.assertEqual(self.plan.get_proteins(), proteins)
