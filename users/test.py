@@ -93,6 +93,7 @@ class TestPlanModel(TestCase):
         cls.PROTEIN_CONST = getattr(
             Plan.ProteinFactor, TEST_USER_PLAN["activity_level"]
         ).value
+        cls.RECOMENDED_LIPIDS_PERCENTAGE = 0.3
 
     def test_get_rest_bmr(self):
         self.assertEqual(
@@ -113,5 +114,9 @@ class TestPlanModel(TestCase):
         self.assertEqual(self.plan.get_diet_bmr(), self.DIET_BMR)
 
     def test_get_proteins(self):
-        proteins = self.DIET_BMR * self.PROTEIN_CONST
+        proteins = self.DIET_BMR * self.PROTEIN_CONST / 4
         self.assertEqual(self.plan.get_proteins(), proteins)
+
+    def test_get_lipids(self):
+        lipids_calories = self.DIET_BMR * self.RECOMENDED_LIPIDS_PERCENTAGE / 9
+        self.assertEqual(self.plan.get_lipids(), lipids_calories)
