@@ -61,17 +61,17 @@ class Plan(models.Model):
 
     """
 
-    class PlanObjective(models.TextChoices):
+    class Objective(models.TextChoices):
         FAT_LOSS = "FL", _("fat loss")
         MAINTAIN_WEIGHT = "MW", _("maintain weight")
         MUSCLE_GAIN = "MG", _("muscle gain")
 
     class ActivityLevel(float, models.Choices):
         SEDENTARY = 1.2, _("Sedentary")
-        LIGHT = 1.375, _("Lightly active")
-        MODERATE = 1.55, _("Moderately active")
-        HIGHT = 1.725, _("Very active")
-        EXTREME = 1.9, _("Extra active")
+        LIGHT = 1.375, _("Light")
+        MODERATE = 1.55, _("Moderate")
+        HIGHT = 1.725, _("High")
+        EXTREME = 1.9, _("Extreme")
 
     class Intensity(float, models.Choices):
         DEFAULT = 0.0, _("Maintain")
@@ -79,36 +79,32 @@ class Plan(models.Model):
         MODERATE = 0.225, _("Moderate")
         HIGH = 0.3, _("High")
 
-    MALE_CONST = 5
-    FEMALE_CONST = -161
-    # Cambiar los numeros por nombres descriptivos, no olvidar los test
-
-    PROTEIN_FACTOR = {
-        "sedentario": 0.1,
-        "poca": 0.15,
-        "moderada": 0.2,
-        "alta": 0.25,
-        "extrema": 0.3,
-    }
+    class ProteinFactor(float, models.Choices):
+        SEDENTARY = 0.15, _("Sedentary")
+        LIGHT = 0.2, _("Low")
+        MODERATE = 0.25, _("Moderate")
+        HIGH = 0.3, _("High")
+        EXTREME = 0.35, _("Extreme")
 
     profile = models.OneToOneField(Profile, on_delete=models.CASCADE)
-    activity_level = models.CharField(
-        max_length=9,
-        choices=ActivityLevel.names,
-        default=ActivityLevel.SEDENTARY.name,
+    activity_level = models.FloatField(
+        choices=ActivityLevel.choices,
+        default=ActivityLevel.SEDENTARY,
     )
-    objetive = models.CharField(
+    objective = models.CharField(
         max_length=2,
-        choices=PlanObjective.choices,
-        default=PlanObjective.MAINTAIN_WEIGHT,
+        choices=Objective.choices,
+        default=Objective.MAINTAIN_WEIGHT,
     )
-    intensity = models.CharField(
-        max_length=8,
-        choices=Intensity.names,
-        default=Intensity.DEFAULT.name,
+    intensity = models.FloatField(
+        choices=Intensity.choices,
+        default=Intensity.DEFAULT,
     )
 
-    def get_rest_bmr(self) -> int:
+    MALE_CONST = 5
+    FEMALE_CONST = -161
+
+    def get_rest_bmr(self):
         """
         This method its based in the [Harris-Benedict BMR ecuation(1990)](https://en.wikipedia.org/wiki/Harris%E2%80%93Benedict_equation)
         this formula stimates the daily caloric consumption at rest in function of individual's weight, height and age.
@@ -125,20 +121,22 @@ class Plan(models.Model):
         )
 
     def get_maintain_bmr(self):
-        return self.get_rest_bmr() * getattr(self.ActivityLevel, self.activity_level).value
+        return self.get_rest_bmr() * self.activity_level
 
-    def get_gain_bmr(self):
+    def get_gap_bmr(self):
         maintain_bmr = self.get_maintain_bmr()
-        modified_bmr = maintain_bmr * getattr(self.Intensity, self.intensity).value 
-        return maintain_bmr + modified_bmr
+        gap_bmr = maintain_bmr * self.intensity
+        return gap_bmr
 
-    def get_loss_bmr(self):
+    def get_diet_bmr(self):
         maintain_bmr = self.get_maintain_bmr()
-        modified_bmr = maintain_bmr * getattr(self.Intensity, self.intensity).value
-        return maintain_bmr - modified_bmr
+        gap_bmr = self.get_gap_bmr()
+        return maintain_bmr + (gap_bmr if self.objective == "MG" else -gap_bmr)
 
     def get_proteins(self):
-        pass
+        ACTIVITY_LEVEL = self.get_activity_level_display().upper()
+        PROTEIN_CONST = getattr(Plan.ProteinFactor, ACTIVITY_LEVEL).value
+        return self.get_diet_bmr() * PROTEIN_CONST
 
     def get_carbohydrates(self):
         pass
