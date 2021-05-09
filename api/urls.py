@@ -4,7 +4,8 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
-
+# Here must be exist token generation and refresh, and everything that be related with
+# api things as information and docs
 urlpatterns = [
     path("register/", api_views.registration),
     path("protected/", api_views.some_protected_view),
